@@ -1,0 +1,21 @@
+[project]
+name = "llm-chat"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "rice8y", email = "eitoy1128@mbr.nifty.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "huggingface-hub>=0.32.2",
+    "llama-cpp-python>=0.3.9",
+    "rich>=14.0.0",
+]
+
+[project.scripts]
+llm-chat = "llm_chat.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
