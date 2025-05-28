@@ -20,7 +20,13 @@ This will fetch and install the latest version directly from the repository.
 git clone https://github.com/rice8y/llm-chat.git
 ```
 
-2. Install the package in editable mode using `uv tool`:
+2. Move into the project directory:
+
+```bash
+cd llm-chat
+```
+
+3. Install the package in editable mode using `uv tool`:
 
 ```bash
 uv tool install -e .
