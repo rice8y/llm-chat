@@ -1,5 +1,10 @@
 # LLM-Chat
 
+**LLM-Chat** is a simple command-line chat tool built on top of [llama-cpp-python](https://github.com/abetlen/llama-cpp-python), a Python binding for llama.cpp.
+It allows you to run and interact with local LLMs (such as LLaMA, Gemma, Mistral, etc.) from your terminal with minimal setup.
+
+Installation
+
 ## Installation
 
 You can install this CLI tool using `uv` in two different ways:
