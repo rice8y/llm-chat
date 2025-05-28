@@ -2,6 +2,18 @@
 
 ## Installation
 
+You can install this CLI tool using uv in two different ways:
+
+### A. Install directly from GitHub (recommended)
+
+```bash
+uv tool install git+https://github.com/rice8y/llm-chat.git
+```
+
+This will fetch and install the latest version directly from the repository.
+
+### B. Install from a local clone
+
 1. Clone the repository:
 
 ```bash
@@ -13,6 +25,8 @@ git clone https://github.com/rice8y/llm-chat.git
 ```bash
 uv tool install -e .
 ```
+
+This is useful if you plan to modify the code locally.
 
 ## Usage
 
