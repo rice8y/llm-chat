@@ -8,7 +8,7 @@
 git clone https://github.com/rice8y/llm-chat.git
 ```
 
-2. Install the package in editable mode using `uv` tool:
+2. Install the package in editable mode using `uv tool`:
 
 ```bash
 uv tool install -e .
