@@ -1,9 +1,7 @@
 import os
 import sys
 import argparse
-import time
 import re
-import readline
 from llama_cpp import Llama
 from contextlib import contextmanager
 import io
@@ -11,6 +9,8 @@ from rich import print
 from rich.live import Live
 from rich.spinner import Spinner as RichSpinner
 from rich.console import Console
+from rich.columns import Columns
+from rich.text import Text
 
 console = Console()
 
@@ -41,9 +41,14 @@ def parse_args():
     return parser.parse_args()
 
 def show_spinner(message, func, *args, **kwargs):
-    spinner = RichSpinner("dots", text=message)
-    with Live(spinner, refresh_per_second=10, transient=True):
-        result = func(*args, **kwargs)
+    spinner = RichSpinner("dots")
+    message_text = Text(message)
+    try:
+        with Live(Columns([spinner, message_text]), refresh_per_second=10, transient=True):
+            result = func(*args, **kwargs)
+    except KeyboardInterrupt:
+        console.print("\n[bold yellow]Operation interrupted by user.[/bold yellow]")
+        sys.exit(0)
     return result
 
 def load_model(args):
@@ -59,7 +64,12 @@ def load_model(args):
 def main():
     args = parse_args()
 
-    model = show_spinner("Loading model...", load_model, args)
+    try:
+        model = show_spinner("Loading model...", load_model, args)
+    except KeyboardInterrupt:
+        console.print("\n[bold yellow]Model loading interrupted by user.[/bold yellow]")
+        sys.exit(0)
+
     console.clear()
     console.print("\n[bold green]Model loaded successfully![/bold green]")
     console.print("[dim]Enter 'exit' to quit the chat.[/dim]\n")
@@ -88,22 +98,52 @@ def main():
             def get_response():
                 return model.create_chat_completion(messages=messages.copy(), stream=True)
 
-            response = show_spinner("Thinking...", get_response)
+            try:
+                spinner = RichSpinner("dots")
+                reply = ""
+                response = None
 
-            reply = ""
-            for chunk in response:
-                if "choices" in chunk and len(chunk["choices"]) > 0:
-                    delta = chunk["choices"][0].get("delta", {})
-                    content = delta.get("content", "")
-                    if content:
-                        console.print(content, end="", soft_wrap=True, highlight=False)
-                        reply += content
+                with Live(Columns([spinner, Text("Thinking...")]), refresh_per_second=10, transient=True) as live:
+                    response = get_response()
+                    first_output = True
 
-            if reply:
-                print("\n")
-                messages.append({"role": "assistant", "content": reply})
-            else:
-                console.print("[bold red]\n[No response generated][/bold red]")
+                    for chunk in response:
+                        if "choices" in chunk and len(chunk["choices"]) > 0:
+                            delta = chunk["choices"][0].get("delta", {})
+                            content = delta.get("content", "")
+                            if content:
+                                if first_output:
+                                    live.stop()
+                                    first_output = False
+                                console.print(content, end="", soft_wrap=True, highlight=False)
+                                reply += content
+
+                if reply:
+                    print("\n")
+                    messages.append({"role": "assistant", "content": reply})
+                else:
+                    console.print("[bold red]\n[No response generated][/bold red]")
+
+            except KeyboardInterrupt:
+                console.print("\n[bold yellow]Generation interrupted by user.[/bold yellow]")
+                continue
+            except Exception as e:
+                error_msg = str(e)
+                if re.search(r"Requested tokens \(\d+\) exceed context window of \d+", error_msg) or \
+                "could not broadcast input array from shape" in error_msg:
+                    console.print("\n[bold red]Error:[/bold red] Model ran out of space in context window.")
+                    choice = input("Would you like to clear chat history and continue? (y/n): ").strip().lower()
+                    if choice == "y":
+                        messages = [
+                            {"role": "system", "content": "You are a helpful assistant."}
+                        ]
+                        console.print("[bold yellow]Chat history cleared. You can continue chatting.[/bold yellow]\n")
+                        continue
+                    else:
+                        console.print("[bold yellow]Exiting chat.[/bold yellow]")
+                        break
+                else:
+                    console.print(f"\n[bold red]Unexpected error:[/bold red] {e}")
 
     except Exception as e:
         console.print(f"\n[bold red]Unexpected error:[/bold red] {e}")
