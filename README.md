@@ -2,7 +2,7 @@
 
 ## Installation
 
-You can install this CLI tool using uv in two different ways:
+You can install this CLI tool using `uv` in two different ways:
 
 ### A. Install directly from GitHub (recommended)
 
