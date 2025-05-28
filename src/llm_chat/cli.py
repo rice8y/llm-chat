@@ -100,6 +100,7 @@ def main():
 
             try:
                 spinner = RichSpinner("dots")
+                
                 reply = ""
                 response = None
 
