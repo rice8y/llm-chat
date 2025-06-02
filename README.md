@@ -1,5 +1,8 @@
 # LLM-Chat
 
+![CI](https://github.com/rice8y/llm-chat/actions/workflows/CI.yml/badge.svg)
+![codecov](https://codecov.io/gh/rice8y/llm-chat/branch/main/graph/badge.svg)
+
 **LLM-Chat** is a high-performance command-line chat tool built on top of [llama-cpp-python](https://github.com/abetlen/llama-cpp-python), a Python binding for llama.cpp. It allows you to run and interact with local LLMs (such as LLaMA, Gemma, Mistral, etc.) from your terminal with advanced optimization features and minimal setup.
 
 ## Features
