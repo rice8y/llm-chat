@@ -16,66 +16,71 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
-        enable-cache: true
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
 
-    - name: Set up Python ${{ matrix.python-version }}
-      run: uv python install ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
 
-    - name: Install dependencies
-      run: |
-        uv sync --all-extras --dev
-        uv tool install -e .
+      - name: Install dependencies (including dev)
+        run: |
+          uv sync --all-extras
+          uv tool install -e .[dev]
 
-    - name: Run tests
-      run: |
-        uv run pytest tests/ -v --cov=src --cov-report=xml --cov-report=term-missing
+      - name: Run tests
+        run: |
+          uv run pytest tests/ -v --cov=src --cov-report=xml --cov-report=term-missing
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: true
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true
 
   security:
     name: Security Scan
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
-        enable-cache: true
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
 
-    - name: Set up Python
-      run: uv python install 3.12
+      - name: Set up Python
+        run: uv python install 3.12
 
-    - name: Run security scan
-      run: |
-        uv run bandit -r src/ -f json -o bandit-report.json
-        uv run safety check --json > safety-report.json
+      - name: Install dependencies (including dev)
+        run: |
+          uv sync --all-extras
+          uv tool install -e .[dev]
 
-    - name: Upload security reports
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: security-reports
-        path: |
-          bandit-report.json
-          safety-report.json
+      - name: Run security scan
+        run: |
+          uv run bandit -r src/ -f json -o bandit-report.json
+          uv run safety check --json > safety-report.json
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
 
   build:
     name: Build & Package
@@ -83,31 +88,31 @@ jobs:
     needs: [test, security]
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
-        enable-cache: true
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
 
-    - name: Set up Python
-      run: uv python install 3.12
+      - name: Set up Python
+        run: uv python install 3.12
 
-    - name: Build package
-      run: |
-        uv build
+      - name: Build package
+        run: |
+          uv build
 
-    - name: Check package
-      run: |
-        uv run twine check dist/*
+      - name: Check package
+        run: |
+          uv run twine check dist/*
 
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: dist
-        path: dist/
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
   integration-test:
     name: Integration Tests
@@ -115,33 +120,32 @@ jobs:
     needs: build
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
-        enable-cache: true
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
 
-    - name: Set up Python
-      run: uv python install 3.12
+      - name: Set up Python
+        run: uv python install 3.12
 
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: dist
-        path: dist/
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
-    - name: Install from wheel
-      run: |
-        uv tool install dist/*.whl
+      - name: Install from wheel
+        run: |
+          uv tool install dist/*.whl
 
-    - name: Test CLI installation
-      run: |
-        # Test that the CLI can be invoked (will fail without model, but should show help)
-        llm-chat --help || true
-        echo "CLI installation test completed"
+      - name: Test CLI installation
+        run: |
+          llm-chat --help || true
+          echo "CLI installation test completed"
 
   publish:
     name: Publish to PyPI
@@ -151,14 +155,14 @@ jobs:
     environment: pypi
 
     steps:
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: dist
-        path: dist/
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
