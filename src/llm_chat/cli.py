@@ -172,12 +172,9 @@ async def async_generate_response(model, messages, temperature, top_p):
         )
     )
 
-def get_user_input(prompt: str, use_gpu: bool) -> str:
+def get_user_input(prompt: str) -> str:
     try:
-        if use_gpu:
-            return input(prompt)
-        else:
-            return console.input(prompt)
+        return console.input(prompt)
     except (EOFError, KeyboardInterrupt):
         raise KeyboardInterrupt from None
 
@@ -189,7 +186,7 @@ def handle_context_overflow(messages: list[dict[str, str]], args) -> list[dict[s
     console.print("3. Exit (e)")
 
     try:
-        choice = get_user_input("Choose option [c/r/e]: ", args.n_gpu_layers != 0).strip().lower()
+        choice = get_user_input("Choose option [c/r/e]: ").strip().lower()
     except KeyboardInterrupt:
         return None
 
@@ -240,10 +237,14 @@ def main():
 
     messages = [{"role": "system", "content": "You are a helpful assistant."}]
 
+    first_iter = True
     try:
         while True:
             try:
-                user_input = get_user_input(">>> ", args.n_gpu_layers != 0)
+                if not first_iter:
+                    print()
+                user_input = get_user_input(">>> ")
+                first_iter = False
             except KeyboardInterrupt:
                 console.print("\n[bold yellow]Exiting chat[/bold yellow]")
                 break
