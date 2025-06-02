@@ -1,20 +1,20 @@
-import os
-import sys
 import argparse
-import re
-import time
 import asyncio
-from typing import List, Dict, Any
-from llama_cpp import Llama
-from contextlib import contextmanager
 import io
+import multiprocessing
+import os
+import re
+import sys
+import time
+from contextlib import contextmanager
+
+from llama_cpp import Llama
 from rich import print as rprint
+from rich.columns import Columns
+from rich.console import Console
 from rich.live import Live
 from rich.spinner import Spinner as RichSpinner
-from rich.console import Console
-from rich.columns import Columns
 from rich.text import Text
-import multiprocessing
 
 console = Console()
 
@@ -35,20 +35,20 @@ def suppress_specific_warning(pattern):
             for line in stderr_buffer:
                 sys.stderr.write(line)
             return
-        
+
         for line in stderr_buffer:
             if not regex.search(line):
                 sys.stderr.write(line)
 
-def estimate_tokens(messages: List[Dict[str, str]]) -> int:
+def estimate_tokens(messages: list[dict[str, str]]) -> int:
     total_chars = sum(len(msg.get("content", "")) for msg in messages)
     return int(total_chars * 0.25)
 
-def manage_context_efficiently(messages: List[Dict[str, str]], max_tokens: int) -> List[Dict[str, str]]:
+def manage_context_efficiently(messages: list[dict[str, str]], max_tokens: int) -> list[dict[str, str]]:
     if estimate_tokens(messages) > max_tokens * 0.75:
         system_msg = messages[0] if messages and messages[0].get("role") == "system" else None
         recent_messages = messages[-6:] if len(messages) > 6 else messages[1:]
-        
+
         if system_msg:
             return [system_msg] + recent_messages
         return recent_messages
@@ -74,22 +74,22 @@ def profile_operation(operation_name: str):
 def parse_args():
     parser = argparse.ArgumentParser(description="High-performance interactive chat with LLM")
     parser.add_argument("--model", type=str, required=True, help="Path to the Llama model file (gguf format)")
-    parser.add_argument("--filename", type=str, default=None, 
+    parser.add_argument("--filename", type=str, default=None,
                         help="Filename pattern for the model file if downloading from Hugging Face Hub")
     parser.add_argument("--n_ctx", type=int, default=4096, help="Context size for the model")
-    parser.add_argument("--n_gpu_layers", type=int, default=0, 
+    parser.add_argument("--n_gpu_layers", type=int, default=0,
                         help="Number of layers to offload to GPU (-1 for all)")
-    parser.add_argument("--n_batch", type=int, default=None, 
+    parser.add_argument("--n_batch", type=int, default=None,
                         help="Batch size for prompt processing (auto-calculated if not specified)")
-    
+
     try:
         default_threads = multiprocessing.cpu_count()
     except NotImplementedError:
         default_threads = 4
-    
+
     parser.add_argument("--n_threads", type=int, default=default_threads,
                         help="Number of CPU threads to use")
-    parser.add_argument("--flash_attn", action="store_true", 
+    parser.add_argument("--flash_attn", action="store_true",
                         help="Enable Flash Attention if supported")
     parser.add_argument("--mul_mat_q", action="store_true",
                         help="Enable quantized matrix multiplication")
@@ -105,7 +105,7 @@ def parse_args():
                         help="Top-p sampling parameter")
     parser.add_argument("--profile", action="store_true",
                         help="Enable performance profiling")
-    
+
     return parser.parse_args()
 
 def show_spinner(message, func, *args, **kwargs):
@@ -113,7 +113,7 @@ def show_spinner(message, func, *args, **kwargs):
     message_text = Text(message)
     live_display = Columns([spinner, message_text], expand=False)
     try:
-        with Live(live_display, refresh_per_second=10, transient=True, console=console) as live:
+        with Live(live_display, refresh_per_second=10, transient=True, console=console):
             result = func(*args, **kwargs)
     except KeyboardInterrupt:
         console.print("\n[bold yellow]Operation interrupted by user.[/bold yellow]")
@@ -123,11 +123,11 @@ def show_spinner(message, func, *args, **kwargs):
 @profile_operation("Model loading")
 def load_model(args):
     warning_pattern_n_ctx = r"llama_context: n_ctx_per_seq \(\d+\) < n_ctx_train \(\d+\)"
-    
+
     if args.n_batch is None:
         args.n_batch = calculate_optimal_batch_size(args.n_ctx, args.n_gpu_layers)
         console.print(f"[dim]Auto-calculated batch size: {args.n_batch}[/dim]")
-    
+
     llama_cpp_kwargs = {
         "n_ctx": args.n_ctx,
         "n_gpu_layers": args.n_gpu_layers,
@@ -138,11 +138,11 @@ def load_model(args):
         "use_mmap": args.use_mmap,
         "n_keep": args.n_keep,
     }
-    
+
     if args.flash_attn:
         llama_cpp_kwargs["flash_attn"] = True
         console.print("[dim]Flash Attention enabled[/dim]")
-    
+
     if args.mul_mat_q:
         llama_cpp_kwargs["mul_mat_q"] = True
         console.print("[dim]Quantized matrix multiplication enabled[/dim]")
@@ -152,8 +152,8 @@ def load_model(args):
             return Llama(model_path=args.model, **llama_cpp_kwargs)
         elif args.filename:
             return Llama.from_pretrained(
-                repo_id=args.model, 
-                filename=args.filename, 
+                repo_id=args.model,
+                filename=args.filename,
                 **llama_cpp_kwargs
             )
         else:
@@ -163,11 +163,11 @@ def load_model(args):
 async def async_generate_response(model, messages, temperature, top_p):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(
-        None, 
+        None,
         lambda: model.create_chat_completion(
-            messages=messages, 
-            stream=True, 
-            temperature=temperature, 
+            messages=messages,
+            stream=True,
+            temperature=temperature,
             top_p=top_p
         )
     )
@@ -179,20 +179,20 @@ def get_user_input(prompt: str, use_gpu: bool) -> str:
         else:
             return console.input(prompt)
     except (EOFError, KeyboardInterrupt):
-        raise KeyboardInterrupt
+        raise KeyboardInterrupt from None
 
-def handle_context_overflow(messages: List[Dict[str, str]], args) -> List[Dict[str, str]]:
+def handle_context_overflow(messages: list[dict[str, str]], args) -> list[dict[str, str]]:
     console.print(f"\n[bold red]Context limit reached ({args.n_ctx} tokens)[/bold red]")
     console.print("[yellow]Options:[/yellow]")
     console.print("1. Clear history and continue (c)")
     console.print("2. Reduce context automatically (r)")
     console.print("3. Exit (e)")
-    
+
     try:
         choice = get_user_input("Choose option [c/r/e]: ", args.n_gpu_layers != 0).strip().lower()
     except KeyboardInterrupt:
         return None
-    
+
     if choice == "c":
         return [msg for msg in messages if msg.get("role") == "system"]
     elif choice == "r":
@@ -223,7 +223,7 @@ def main():
 
     console.clear()
     console.print("\n[bold green]Model loaded successfully![/bold green]")
-    
+
     config_info = [
         f"Context: {args.n_ctx}",
         f"GPU Layers: {args.n_gpu_layers}",
@@ -234,7 +234,7 @@ def main():
         f"Memory Lock: {args.use_mlock}",
         f"Memory Map: {args.use_mmap}"
     ]
-    
+
     rprint(f"[dim]{' | '.join(config_info)}[/dim]")
     console.print("[dim]Enter 'exit', 'quit', or 'clear' to manage chat[/dim]\n")
 
@@ -251,7 +251,7 @@ def main():
             if user_input.lower() in ["exit", "quit"]:
                 console.print("[bold yellow]Exiting chat[/bold yellow]")
                 break
-            
+
             if user_input.lower() == "clear":
                 messages = [{"role": "system", "content": "You are a helpful assistant."}]
                 console.print("[bold yellow]Chat history cleared[/bold yellow]\n")
@@ -269,23 +269,23 @@ def main():
                 live_display = Columns([spinner, Text("Thinking...")], expand=False)
                 first_chunk_received = False
 
-                def get_response():
+                def get_response(msgs):
                     return model.create_chat_completion(
-                        messages=messages, 
-                        stream=True, 
-                        temperature=args.temperature, 
+                        messages=msgs,
+                        stream=True,
+                        temperature=args.temperature,
                         top_p=args.top_p
                     )
 
                 generation_start = time.perf_counter() if args.profile else None
 
                 with Live(live_display, refresh_per_second=10, transient=True, console=console) as live:
-                    response_stream = get_response()
+                    response_stream = get_response(messages)
                     for chunk in response_stream:
                         if not first_chunk_received:
                             live.stop()
                             first_chunk_received = True
-                        
+
                         choice = chunk["choices"][0]
                         delta = choice.get("delta", {})
                         content_piece = delta.get("content")
@@ -293,7 +293,7 @@ def main():
                         if content_piece:
                             console.print(content_piece, end="", soft_wrap=True, highlight=False)
                             reply_content += content_piece
-                        
+
                         if choice.get("finish_reason") is not None:
                             break
 
@@ -302,7 +302,7 @@ def main():
                     token_count = len(reply_content.split())
                     tokens_per_second = token_count / generation_time if generation_time > 0 else 0
                     console.print(f"\n[dim]Generation: {generation_time:.3f}s | Tokens: {token_count} | Speed: {tokens_per_second:.1f} tok/s[/dim]")
-                
+
                 if reply_content:
                     console.print()
                     messages.append({"role": "assistant", "content": reply_content})
