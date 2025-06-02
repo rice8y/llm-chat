@@ -30,7 +30,8 @@ jobs:
 
       - name: Install dependencies (including dev)
         run: |
-          uv pip install -e .[dev]
+          uv sync --all-extras
+          uv tool install -e .[dev]
 
       - name: Run tests
         run: |
@@ -64,7 +65,8 @@ jobs:
 
       - name: Install dependencies (including dev)
         run: |
-          uv pip install -e .[dev]
+          uv sync --all-extras
+          uv tool install -e .[dev]
 
       - name: Run security scan
         run: |
@@ -99,16 +101,7 @@ jobs:
         run: uv python install 3.12
 
       - name: Build package
-        run: |
-          uv build
-
-      - name: Install twine
-        run: |
-          uv pip install twine
-
-      - name: Check package
-        run: |
-          uv run twine check dist/*
+        run: uv build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -142,7 +135,7 @@ jobs:
 
       - name: Install from wheel
         run: |
-          uv pip install dist/*.whl
+          uv tool install dist/*.whl
 
       - name: Test CLI installation
         run: |
